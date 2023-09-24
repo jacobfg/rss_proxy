@@ -1,4 +1,5 @@
 FROM python:3-slim-bookworm
+LABEL org.opencontainers.image.source https://github.com/jacobfg/rss_proxy
 WORKDIR /app
 COPY requirements.txt /app
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
