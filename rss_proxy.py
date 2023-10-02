@@ -1,39 +1,99 @@
 import signal
 import sys
 import requests
+import re
 from bs4 import BeautifulSoup
 from flask import Flask, Response
 
 app = Flask(__name__)
 
-@app.route('/proxy')
-def proxy_rss():
-    # Define the URL of the RSS feed to proxy
+@app.route('/koala_sleep', methods=['GET'])
+def koala_sleep():
+    # define the URL of the RSS feed to proxy
     target_url = "https://feeds.megaphone.fm/NSR5390218838"
 
-    # Send a request to the target URL
-    response = requests.get(target_url)
+    # send a request to the target URL
+    headers = {
+        'content-type': 'text/xml',
+    }
+    response = requests.get(target_url, headers=headers)
 
     if response.status_code != 200:
         return "Failed to fetch RSS feed", response.status_code
 
-    # Parse the RSS feed using BeautifulSoup
-    soup = BeautifulSoup(response.text, "lxml")
+    # parse the RSS feed using BeautifulSoup
+    soup = BeautifulSoup(response.text, features="xml")
 
-    # Find and rewrite enclosure tags as link tags
-    for enclosure in soup.find_all("enclosure"):
-        link = soup.new_tag("link")
-        link.string = enclosure.get("url", "").split('?')[0]
+    # loop items
+    for item in soup.find_all("item"):
+        # filter episodes longer than 480 seconds (8 mins)
+        if int(item.find('itunes:duration').string) < 480: # 8 mins
+          item.decompose()
 
-        if int(enclosure.parent.find('itunes:duration').string) > 480: # 6 mins
-          enclosure.parent.append(link)
-          enclosure.decompose()
-        else:
-          enclosure.parent.decompose()
+        # find and rewrite enclosure tags as link tags
+        link_from_enclosure(soup, item)
 
-    # Set the response content type and return the modified XML
+    filter_tags(soup)
+
+    # set the response content type and return the modified XML
     response = Response(soup.prettify(), content_type="application/xml")
     return response
+
+@app.route('/the_grow_your_mind', methods=['GET'])
+def the_grow_your_mind():
+    # define the URL of the RSS feed to proxy
+    target_url = "https://omny.fm/shows/the-grow-your-mind-podcast/playlists/podcast.rss"
+
+    # send a request to the target URL
+    headers = {
+        'content-type': 'text/xml',
+    }
+    response = requests.get(target_url, headers=headers)
+
+    if response.status_code != 200:
+        return "Failed to fetch RSS feed", response.status_code
+
+    # parse the RSS feed using BeautifulSoup
+    soup = BeautifulSoup(response.text, features="xml")
+
+    regex = re.compile(r'(^Teachers!|S\d+\s-\sS[oO][nN][gG]\s\d+\s-\s)')
+
+    # loop items
+    for item in soup.find_all("item"):
+        # filter episodes out of the feed matching regex
+        if regex.match(item.find('title').text):
+            item.decompose()
+
+        # find and rewrite enclosure tags as link tags
+        link_from_enclosure(soup, item)
+
+    filter_tags(soup)
+
+    # set the response content type and return the modified XML
+    response = Response(soup.prettify(), content_type="application/xml")
+    return response
+
+# extract the link tag fro the enclosure tag
+def link_from_enclosure(soup, item):
+    # find and rewrite enclosure tags as link tags
+    link = soup.new_tag("link")
+    # get link url from enclosure
+    for enclosure in item.find_all("enclosure", recursive=False):
+        link.string = enclosure.get("url", "").split('?')[0]
+    # remove any link tags
+    for remove in item.find_all("link", recursive=False):
+        remove.decompose()
+        item.smooth()
+    # add new link tag
+    item.append(link)
+
+# just stripping content - mostly for debugging
+def filter_tags(feed):
+    keep_tags = ["link", "episode", "season", "title"]
+    for items in feed.find_all("item"):
+        for child in items.find_all(recursive=False):
+            if child.name not in keep_tags:
+                child.decompose()
 
 def signal_handler(signal, frame):
     print("Shutting down gracefully...")
