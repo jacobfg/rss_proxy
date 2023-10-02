@@ -10,6 +10,8 @@ RUN apt-get update && \
 
 # Build the virtualenv as a separate step: Only re-execute this step when requirements.txt changes
 FROM build AS build-venv
+# not required with multi-stage build
+# ENV PIP_NO_CACHE_DIR=1
 COPY requirements.txt /requirements.txt
 RUN /venv/bin/pip install --disable-pip-version-check -r /requirements.txt
 # RUN /venv/bin/pip install --trusted-host pypi.python.org -r requirements.txt
