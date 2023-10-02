@@ -89,7 +89,7 @@ def link_from_enclosure(soup, item):
 
 # just stripping content - mostly for debugging
 def filter_tags(feed):
-    keep_tags = ["link", "episode", "title"]
+    keep_tags = ["link", "episode", "season", "title"]
     for items in feed.find_all("item"):
         for child in items.find_all(recursive=False):
             if child.name not in keep_tags:
