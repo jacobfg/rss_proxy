@@ -1,0 +1,15 @@
+FROM python:3.12-slim-bookworm AS base
+
+### Install pipenv and compilation dependencies
+RUN pip install pipenv \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends gcc
+
+### Install python dependencies in /.venv
+COPY requirements.txt .
+
+RUN pip install --upgrade -r requirements.txt
+# RUN pip freeze | tee requirements.txt
+RUN pipenv update \
+    && pipenv run pip freeze \
+    && pipenv lock

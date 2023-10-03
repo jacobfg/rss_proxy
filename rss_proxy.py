@@ -4,10 +4,11 @@ import requests
 import re
 from bs4 import BeautifulSoup
 from flask import Flask, Response
+from waitress import serve
 
 app = Flask(__name__)
 
-@app.route('/koala_sleep', methods=['GET'])
+@app.route('/koala_moon', methods=['GET'])
 def koala_sleep():
     # define the URL of the RSS feed to proxy
     target_url = "https://feeds.megaphone.fm/NSR5390218838"
@@ -22,7 +23,7 @@ def koala_sleep():
         return "Failed to fetch RSS feed", response.status_code
 
     # parse the RSS feed using BeautifulSoup
-    soup = BeautifulSoup(response.text, features="xml")
+    soup = BeautifulSoup(response.text, "html.parser")
 
     # loop items
     for item in soup.find_all("item"):
@@ -54,7 +55,7 @@ def the_grow_your_mind():
         return "Failed to fetch RSS feed", response.status_code
 
     # parse the RSS feed using BeautifulSoup
-    soup = BeautifulSoup(response.text, features="xml")
+    soup = BeautifulSoup(response.text, "html.parser")
 
     regex = re.compile(r'(^Teachers!|S\d+\s-\sS[oO][nN][gG]\s\d+\s-\s)')
 
@@ -89,7 +90,7 @@ def link_from_enclosure(soup, item):
 
 # just stripping content - mostly for debugging
 def filter_tags(feed):
-    keep_tags = ["link", "episode", "season", "title"]
+    keep_tags = ["link", "itunes:episode", "itunes:season", "title"]
     for items in feed.find_all("item"):
         for child in items.find_all(recursive=False):
             if child.name not in keep_tags:
@@ -104,4 +105,4 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    app.run(host='0.0.0.0',port=8888)
+    serve(app, listen='*:8888')
